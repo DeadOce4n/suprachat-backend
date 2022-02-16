@@ -46,7 +46,6 @@ def find_users(file: str) -> list[dict]:
                             and "registered_date" not in user.keys()
                         ):
                             timestamp = float(lines[index + 2].strip()[0:10])
-                            print(timestamp)
                             user["registered_date"] = datetime.fromtimestamp(
                                 timestamp
                             ).isoformat()
@@ -68,10 +67,14 @@ def migrate():
             users.insert_one(
                 {
                     "nick": user["nick"],
-                    "email": None,
                     "password": user["password_hash"],
-                    "password_from": "ergo",
+                    "email": None,
                     "registered_date": user["registered_date"],
+                    "password_from": "ergo",
+                    "verified": True,
+                    "active": True,
+                    "country": None,
+                    "about": None,
                 }
             )
         except DuplicateKeyError:

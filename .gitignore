@@ -5,3 +5,4 @@ request.http
 uploads/
 instance/
 tests/
+ircd.db
