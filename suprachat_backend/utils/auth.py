@@ -1,0 +1,35 @@
+from functools import wraps
+
+import jwt
+from bson.objectid import ObjectId
+from flask import current_app, request
+from jwt.exceptions import InvalidTokenError
+
+from suprachat_backend.db import mongo
+
+
+def token_required(f):
+    @wraps(f)
+    def decorator(*args, **kwargs):
+        token = None
+
+        if "x-access-tokens" in request.headers:
+            token = request.headers["x-access-tokens"]
+
+        if not token:
+            return {"success": False, "error": "A valid token is needed."}
+
+        try:
+            data = jwt.decode(
+                token, current_app.config["SECRET_KEY"], algorithms=("HS256",)
+            )
+            current_user = mongo.db.users.find_one({"_id": ObjectId(data["_id"])})
+            if current_user is None:
+                raise InvalidTokenError("Token is invalid, user does not exist.")
+        except InvalidTokenError as e:
+            print(e)
+            return {"success": False, "error": "Invalid token"}
+
+        return f(*args, **kwargs)
+
+    return decorator

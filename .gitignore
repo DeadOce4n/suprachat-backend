@@ -1,0 +1,7 @@
+*.py[cod]
+__pycache__/
+.env
+request.http
+uploads/
+instance/
+tests/

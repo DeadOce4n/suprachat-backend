@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "suprachat_backend"
+version = "0.1.0"
+description = "SupraChat Backend"
+authors = ["DeadOcean <admin@suprachat.net>"]
+license = "GPLv3"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+Flask = "^2.0.2"
+Flask-PyMongo = "^2.3.0"
+python-dotenv = "^0.19.2"
+flask-marshmallow = "^0.14.0"
+webargs = "^8.1.0"
+Flask-Cors = "^3.0.10"
+PyJWT = "^2.3.0"
+bcrypt = "^3.2.0"
+gunicorn = "^20.1.0"
+irctokens = "^2.0.1"
+
+[tool.poetry.dev-dependencies]
+isort = "^5.10.1"
+pytest = "^7.0.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
