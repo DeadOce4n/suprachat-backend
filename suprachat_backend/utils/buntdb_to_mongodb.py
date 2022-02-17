@@ -1,11 +1,12 @@
 import click
 import json
 import sys
+from datetime import datetime
+from json.decoder import JSONDecodeError
+from flask import current_app
 from flask.cli import with_appcontext
 from pymongo import MongoClient
 from pymongo.errors import DuplicateKeyError
-from dotenv import load_dotenv
-from datetime import datetime
 
 
 def find_users(file: str) -> list[dict]:
@@ -17,50 +18,69 @@ def find_users(file: str) -> list[dict]:
         file: The BuntDB file to look into.
 
     Returns:
-        A list containing a dictionary of every user found and their data.
+        A list containing a dictionary of every user found and their data. For
+        example:
+
+            {"nick": "DeadOcean",
+             "password_hash": "someAwesomePasswordHash",
+             "registered_date": '2021-05-08T20:01:43'}
     """
     try:
-        found_users = []
         with open(file) as f:
-            lines = list(map(lambda line: line.strip(), f.readlines()))
-            found_nicks = []
+            lines = list(map(lambda line: line.strip(), reversed(f.readlines())))
+            users: list[dict] = []
+
+            for index, line in enumerate(lines):
+                if line.startswith("account.name"):
+                    user = {"nick": lines[index - 2]}
+                    if user not in users and not user["nick"].startswith("$"):
+                        print(f"Found nick: {user['nick']}")
+                        users.append(user)
+
             for index, line in enumerate(lines):
                 if line.startswith("account.credentials"):
                     nick = line.split(" ")[1]
-                    if nick in found_nicks:
-                        continue
-                    else:
-                        print(f"User found: {nick}")
-                        found_nicks.append(nick)
-                        password_hash = json.loads(lines[index + 2])["PassphraseHash"]
-                        user = {"nick": nick, "password_hash": password_hash}
-                        if user not in found_users:
-                            found_users.append(user)
+                    for user in users:
+                        if (
+                            nick == user["nick"].lower()
+                            and "password_hash" not in user.keys()
+                        ):
+                            try:
+                                password_hash = json.loads(lines[index - 2])[
+                                    "PassphraseHash"
+                                ]
+                                user["password_hash"] = password_hash
+                            except JSONDecodeError:
+                                pass
 
             for index, line in enumerate(lines):
                 if line.startswith("account.registered.time"):
                     nick = line.split(" ")[1]
-                    for user in found_users:
+                    for user in users:
                         if (
-                            nick == user["nick"]
+                            nick == user["nick"].lower()
                             and "registered_date" not in user.keys()
                         ):
-                            timestamp = float(lines[index + 2].strip()[0:10])
-                            user["registered_date"] = datetime.fromtimestamp(
-                                timestamp
-                            ).isoformat()
+                            try:
+                                timestamp = float(lines[index - 2].strip()[0:10])
+                                user["registered_date"] = datetime.fromtimestamp(
+                                    timestamp
+                                ).isoformat()
+                            except ValueError:
+                                pass
+
     except FileNotFoundError:
         print("Please copy your ircd.db file to this same directory.")
         sys.exit(1)
 
-    return found_users
+    return users
 
 
-def migrate():
-    load_dotenv()
-    db = MongoClient()
+def insert_into_mongo():
+    db = MongoClient(current_app.config["MONGO_URI"])
     users = db.suprachat.users
     found_users = find_users("./ircd.db")
+    inserted_users = 0
 
     for user in found_users:
         try:
@@ -77,16 +97,18 @@ def migrate():
                     "about": None,
                 }
             )
+            inserted_users += 1
         except DuplicateKeyError:
             print(f"User {user['nick']} already exists in database, skipping...")
+
+    print(f"Inserted {inserted_users} users into the database.")
 
 
 @click.command("bunt-to-mongo")
 @with_appcontext
-def migrate_command():
-    migrate()
-    click.echo("Copied users from BuntDB to MongoDB")
+def insert_command():
+    insert_into_mongo()
 
 
 def init_app(app):
-    app.cli.add_command(migrate_command)
+    app.cli.add_command(insert_command)
