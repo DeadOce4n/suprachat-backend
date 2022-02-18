@@ -101,7 +101,7 @@ def signup(args):
     # Connect to the IRCd and attempt registration
     client = IRCClient(
         current_app.config["WEBIRCPASS"],
-        request.environ.get("HTTP_X_REAL_IP", request.remote_addr),
+        request.remote_addr,
     )
 
     if client.connect():
