@@ -206,7 +206,15 @@ def login():
     if check_passwd_function(user["password"], auth.password):
         token = jwt.encode(
             {
-                "_id": str(user["_id"]),
+                "user": {
+                    "_id": str(user["_id"]),
+                    "nick": user["nick"],
+                    "email": user["email"],
+                    "registered_date": user["registered_date"] or None,
+                    "verified": user["verified"],
+                    "country": user["country"] or None,
+                    "about": user["about"] or None,
+                },
                 "exp": dt.datetime.utcnow() + dt.timedelta(minutes=30),
             },
             current_app.config["SECRET_KEY"],
@@ -214,13 +222,13 @@ def login():
         return {
             "success": True,
             "token": token,
-            "user": {
-                "nick": user["nick"],
-                "email": user["email"],
-                "verified": user["verified"],
-                "country": user["country"],
-                "about": user["about"],
-            },
+            # "user": {
+            #     "nick": user["nick"],
+            #     "email": user["email"],
+            #     "verified": user["verified"],
+            #     "country": user["country"],
+            #     "about": user["about"],
+            # },
         }
     else:
         return make_response(({"success": False, "error": "Wrong password."}, 401))
