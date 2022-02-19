@@ -23,7 +23,9 @@ def token_required(f):
             data = jwt.decode(
                 token, current_app.config["SECRET_KEY"], algorithms=("HS256",)
             )
-            current_user = mongo.db.users.find_one({"_id": ObjectId(data["_id"])})
+            current_user = mongo.db.users.find_one(
+                {"_id": ObjectId(data["user"]["_id"])}
+            )
             if current_user is None:
                 raise InvalidTokenError("Token is invalid, user does not exist.")
         except InvalidTokenError as e:

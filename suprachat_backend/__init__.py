@@ -38,6 +38,6 @@ def create_app(test_config=None):
     app.register_blueprint(users_bp)
     app.register_blueprint(files_bp)
 
-    app = ProxyFix(app, x_for=1, x_host=1)
+    # app = ProxyFix(app, x_for=1, x_host=1)
 
     return app
