@@ -1,9 +1,27 @@
-import hashlib
-import bcrypt
+import subprocess
+import json
 import base64
 
 
 def check_password_hash(password_hash: str, password: str) -> bool:
-    password_to_check = hashlib.sha3_512(password.encode("utf-8")).digest()
-    stored_hash = base64.b64decode(password_hash.encode("utf-8"))
-    return bcrypt.checkpw(password_to_check, stored_hash)
+    """
+    Calls ergo's checkpasswd subcommand via subprocess invocation.
+    https://github.com/ergochat/ergo/tree/devel+pwcheck
+
+    Args:
+        password_hash: The password hash, taken from the database.
+        password: The password to check against the hash, taken from
+            the user's input.
+
+    Returns:
+        A boolean indicating success or failure.
+    """
+    payload: str = (
+        f"{json.dumps([base64.b64decode(password_hash).decode('utf-8'), password])}\n"
+    )
+
+    out = subprocess.run(
+        ("/home/oragono/ergo", "checkpasswd"), input=payload.encode("utf-8")
+    )
+
+    return not out.returncode
