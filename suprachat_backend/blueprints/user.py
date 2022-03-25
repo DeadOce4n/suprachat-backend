@@ -1,6 +1,5 @@
 import datetime as dt
 import json
-from pprint import pprint
 
 import jwt
 from flask import Blueprint, current_app, make_response, request
