@@ -3,8 +3,8 @@ from flask import Flask
 from flask_cors import CORS
 
 from . import db
-from .views.user import bp as users_bp
-from .views.files import bp as files_bp
+from .blueprints.user import bp as users_bp
+from .blueprints.files import bp as files_bp
 from .utils import buntdb_to_mongodb
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -38,6 +38,6 @@ def create_app(test_config=None):
     app.register_blueprint(users_bp)
     app.register_blueprint(files_bp)
 
-    app = ProxyFix(app, x_for=1, x_host=1)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_host=1)
 
     return app
