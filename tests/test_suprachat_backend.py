@@ -163,3 +163,52 @@ def test_verification(client, mocker):
 
     assert "200" in response.status
     assert response.json["verified"] == True
+
+
+def test_update_user_ok(app):
+    test_user = {
+        "nick": "DeadOcean",
+        "email": "admin@suprachat.net",
+        "password": "password",
+        "about": "lorem ipsum dolor sit amet",
+        "country": "Andorra",
+    }
+
+    auth = base64.b64encode(
+        f"{test_user['nick']}:{test_user['password']}".encode("utf-8")
+    )
+
+    client = app.test_client()
+
+    with Ircd(ergo_path):
+        _ = client.post(
+            "/api/v1/users/signup",
+            json={
+                "nick": test_user["nick"],
+                "email": test_user["email"],
+                "password": test_user["password"],
+            },
+        )
+
+    response = client.get(
+        "/api/v1/users/login",
+        headers={"Authorization": f"Basic {auth.decode('utf-8')}"},
+    )
+
+    token = response.json["token"]
+
+    response = client.patch(
+        f"/api/v1/users/{test_user['nick']}",
+        headers={"X-Access-Tokens": token},
+        json={
+            "password": "anotherPassword",
+            "country": test_user["country"],
+            "about": test_user["about"],
+        },
+    )
+
+    assert "200" in response.status
+    assert response.json["nick"] == test_user["nick"]
+    assert response.json["about"] is not None
+    assert response.json["country"] is not None
+    assert response.json["password"] is not None
