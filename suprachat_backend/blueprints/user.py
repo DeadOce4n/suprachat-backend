@@ -170,12 +170,20 @@ def login():
     # Users registered directly from the IRCd (through a client like WeeChat) have
     # their passwords hashed with a different algorithm, here we decide which
     # password hash checking function to use
+    new_passwd_hash = None
+
     if user["password_from"] == "ergo":
         check_passwd_function = check_password_hash_ergo
+        new_passwd_hash = generate_password_hash(auth.password)
     else:
         check_passwd_function = check_password_hash
 
     if check_passwd_function(user["password"], auth.password):
+        if new_passwd_hash is not None:
+            mongo.db.users.update_one(
+                {"nick": auth.username},
+                {"$set": {"password": new_passwd_hash, "password_from": "supra"}},
+            )
         token = jwt.encode(
             {
                 "user": {
