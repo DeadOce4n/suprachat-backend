@@ -210,6 +210,7 @@ def login():
 def update_user(args, nick):
     country = args.get("country")
     about = args.get("about")
+    password = args.get("password")
 
     existing_user = mongo.db.users.find_one({"nick": nick})
 
@@ -227,6 +228,13 @@ def update_user(args, nick):
         "about" not in existing_user.keys() or about != existing_user["about"]
     ):
         fields_to_update["about"] = about
+
+    if password:
+        stored_pw_hash = mongo.db.users.find_one({"nick": nick}, {"password": True})[
+            "password"
+        ]
+        if not check_password_hash(stored_pw_hash, password):
+            fields_to_update["password"] = generate_password_hash(password)
 
     if len(fields_to_update.items()) == 0:
         return make_response(({"error": "Nada para modificar."}, 409))
