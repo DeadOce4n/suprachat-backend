@@ -21,7 +21,13 @@ irctokens = "^2.0.1"
 [tool.poetry.dev-dependencies]
 isort = "^5.10.1"
 pytest = "^7.0.0"
+pytest-mock = "^3.7.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+	"ignore:distutils:DeprecationWarning"
+]

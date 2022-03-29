@@ -4,5 +4,5 @@ __pycache__/
 request.http
 uploads/
 instance/
-tests/
 ircd.db
+ergo/
