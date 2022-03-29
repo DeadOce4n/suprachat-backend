@@ -2,7 +2,7 @@ import datetime as dt
 import json
 
 import jwt
-from flask import Blueprint, current_app, make_response, request
+from flask import Blueprint, current_app, make_response, request, jsonify
 from webargs.flaskparser import use_args
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -41,27 +41,22 @@ def get_all_users():
                 "about": user["about"] or None,
             }
         )
-    return {"users": user_list}
+    return jsonify(user_list)
 
 
 @bp.get("/api/v1/users/<string:nick>")
 def get_user(nick):
     user = mongo.db.users.find_one({"nick": nick})
     if not user:
-        return make_response(
-            ({"success": False, "message": f"User {nick} not found."}, 404)
-        )
+        return make_response(({"error": "Usuario no encontrado."}, 404))
     return {
-        "success": True,
-        "user": {
-            "_id": str(user["_id"]),
-            "nick": user["nick"],
-            "email": user["email"],
-            "registered_date": user["registered_date"],
-            "password_from": user["password_from"] or None,
-            "country": user["country"] or None,
-            "about": user["about"] or None,
-        },
+        "_id": str(user["_id"]),
+        "nick": user["nick"],
+        "email": user["email"],
+        "registered_date": user["registered_date"],
+        "password_from": user["password_from"] or None,
+        "country": user["country"] or None,
+        "about": user["about"] or None,
     }
 
 
@@ -80,18 +75,15 @@ def signup(args):
     # anything else
     existing_user = mongo.db.users.find_one({"$or": [{"nick": nick}, {"email": email}]})
     if existing_user:
-        return make_response(
-            ({"success": False, "error": "Nick or email already in use."}, 409)
-        )
+        return make_response(({"error": "Nick o correo ya se encuentra en uso."}, 409))
 
     # Check if nick contains forbidden characters:  ,*?.!@:<>'\";#~&@%+-
     if not validate_string(nick):
         return make_response(
             (
                 {
-                    "success": False,
-                    "message": "Nick contains forbidden characters, is too"
-                    "short or is too long.",
+                    "error": "Nick contiene caracteres prohibidos, es muy corto"
+                    " o muy largo.",
                 },
                 422,
             )
@@ -106,14 +98,10 @@ def signup(args):
     if client.connect():
         ircd_register_response = client.register(nick, email, password)
     else:
-        return make_response(
-            ({"success": False, "message": "Error de conexión al servidor IRC."})
-        )
+        return make_response(({"error": "Error de conexión al servidor IRC."}))
 
     if not ircd_register_response["success"]:
-        return make_response(
-            ({"success": False, "message": ircd_register_response["message"]}, 422)
-        )
+        return make_response(({"error": ircd_register_response["message"]}, 422))
 
     # If registration succeeeds, insert the newly created user into the database
     res = mongo.db.users.insert_one(
@@ -131,14 +119,11 @@ def signup(args):
     )
 
     response = {
-        "success": True,
-        "created": {
-            "_id": str(res.inserted_id),
-            "nick": nick,
-            "email": email,
-            "registered_date": registered_date,
-            "verified": verified,
-        },
+        "_id": str(res.inserted_id),
+        "nick": nick,
+        "email": email,
+        "registered_date": registered_date,
+        "verified": verified,
     }
 
     return make_response((response, 200))
@@ -151,9 +136,7 @@ def verify():
         nick = body["nick"]
         code = body["code"]
     except KeyError:
-        return make_response(
-            ({"success": False, "message": "Verification code required"}, 400)
-        )
+        return make_response(({"error": "Se requiere un código de verificación."}, 400))
     # Connect to the IRCd and attempt registration
     client = IRCClient(
         current_app.config["WEBIRCPASS"],
@@ -162,18 +145,14 @@ def verify():
     if client.connect():
         ircd_verify_response = client.verify(nick, code)
     else:
-        return make_response(
-            ({"success": False, "message": "Error de conexión al servidor IRC."}, 500)
-        )
+        return make_response(({"error": "Error de conexión al servidor IRC."}, 500))
 
     if not ircd_verify_response["success"]:
-        return make_response(
-            ({"success": False, "message": ircd_verify_response["message"]}, 400)
-        )
+        return make_response(({"error": ircd_verify_response["message"]}, 400))
 
     mongo.db.users.update_one({"nick": nick}, {"$set": {"verified": True}})
 
-    return make_response(({"success": True, "verified": True}, 200))
+    return make_response(({"verified": True}, 200))
 
 
 @bp.get("/api/v1/users/login")
@@ -181,18 +160,12 @@ def login():
     auth = request.authorization
 
     if not auth or not auth.username or not auth.password:
-        return make_response(
-            (
-                {"success": False, "error": "Could not verify."},
-                401,
-                {"WWW-Authenticate": "Basic realm: 'login required'"},
-            )
-        )
+        return make_response(({"error": "Hacen falta parámetros."}, 401))
 
     user = mongo.db.users.find_one({"nick": auth.username})
 
     if user is None:
-        return make_response(({"success": False, "error": "User not found."}, 404))
+        return make_response(({"error": "Usuario no encontrado."}, 404))
 
     # Users registered directly from the IRCd (through a client like WeeChat) have
     # their passwords hashed with a different algorithm, here we decide which
@@ -218,19 +191,9 @@ def login():
             },
             current_app.config["SECRET_KEY"],
         )
-        return {
-            "success": True,
-            "token": token,
-            # "user": {
-            #     "nick": user["nick"],
-            #     "email": user["email"],
-            #     "verified": user["verified"],
-            #     "country": user["country"],
-            #     "about": user["about"],
-            # },
-        }
+        return {"token": token}
     else:
-        return make_response(({"success": False, "error": "Wrong password."}, 401))
+        return make_response(({"error": "Contraseña incorrecta"}, 401))
 
 
 @bp.patch("/api/v1/users/<string:nick>")
@@ -243,9 +206,7 @@ def update_user(args, nick):
     existing_user = mongo.db.users.find_one({"nick": nick})
 
     if existing_user is None:
-        return make_response(
-            ({"success": False, "error": f"User {nick} does not exist."}, 404)
-        )
+        return make_response(({"error": f"Usuario no encontrado."}, 404))
 
     fields_to_update = {}
 
@@ -260,10 +221,10 @@ def update_user(args, nick):
         fields_to_update["about"] = about
 
     if len(fields_to_update.items()) == 0:
-        return make_response(({"success": True, "message": "Nothing to update."}, 200))
+        return make_response(({"error": "Nada para modificar."}, 409))
 
     mongo.db.users.update_one({"nick": nick}, {"$set": {**fields_to_update}})
 
-    response = {"success": True, "updated": True, "fields": {**fields_to_update}}
+    response = {"nick": nick, **fields_to_update}
 
     return make_response((response, 200))
