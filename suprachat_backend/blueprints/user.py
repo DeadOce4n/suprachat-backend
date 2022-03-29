@@ -224,7 +224,7 @@ def update_user(args, nick):
     ):
         fields_to_update["country"] = country
 
-    if about and (
+    if about is not None and (
         "about" not in existing_user.keys() or about != existing_user["about"]
     ):
         fields_to_update["about"] = about
