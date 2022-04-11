@@ -198,7 +198,7 @@ def test_update_user_ok(app):
     token = response.json["token"]
 
     response = client.patch(
-        f"/api/v1/users/{test_user['nick']}",
+        f"/api/v1/users",
         headers={"X-Access-Tokens": token},
         json={
             "password": "anotherPassword",

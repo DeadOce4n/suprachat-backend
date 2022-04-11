@@ -32,6 +32,6 @@ def token_required(f):
             print(e)
             return {"success": False, "error": "Invalid token"}
 
-        return f(*args, **kwargs)
+        return f(current_user, *args, **kwargs)
 
     return decorator

@@ -204,15 +204,15 @@ def login():
         return make_response(({"error": "Contraseña incorrecta"}, 401))
 
 
-@bp.patch("/api/v1/users/<string:nick>")
+@bp.patch("/api/v1/users")
 @use_args(make_user_schema)
 @token_required
-def update_user(args, nick):
+def update_user(current_user, args):
     country = args.get("country")
     about = args.get("about")
     password = args.get("password")
 
-    existing_user = mongo.db.users.find_one({"nick": nick})
+    existing_user = mongo.db.users.find_one({"nick": current_user["nick"]})
 
     if existing_user is None:
         return make_response(({"error": f"Usuario no encontrado."}, 404))
@@ -230,17 +230,17 @@ def update_user(args, nick):
         fields_to_update["about"] = about
 
     if password:
-        stored_pw_hash = mongo.db.users.find_one({"nick": nick}, {"password": True})[
-            "password"
-        ]
+        stored_pw_hash = existing_user["password"]
         if not check_password_hash(stored_pw_hash, password):
             fields_to_update["password"] = generate_password_hash(password)
 
     if len(fields_to_update.items()) == 0:
         return make_response(({"error": "Nada para modificar."}, 409))
 
-    mongo.db.users.update_one({"nick": nick}, {"$set": {**fields_to_update}})
+    mongo.db.users.update_one(
+        {"nick": current_user["nick"]}, {"$set": {**fields_to_update}}
+    )
 
-    response = {"nick": nick, **fields_to_update}
+    response = {"nick": current_user["nick"], **fields_to_update}
 
     return make_response((response, 200))
