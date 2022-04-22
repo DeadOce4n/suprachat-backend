@@ -1,24 +1,29 @@
 import os
+
+from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from . import db
-from .blueprints.user import bp as users_bp
 from .blueprints.files import bp as files_bp
+from .blueprints.user import bp as users_bp
 from .utils import buntdb_to_mongodb
-from werkzeug.middleware.proxy_fix import ProxyFix
+
+
+load_dotenv()
 
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
-        MONGO_URI="mongodb://localhost:27017/suprachat",
-        SECRET_KEY="dev",
+        MONGO_URI=os.getenv("MONGO_URI"),
+        SECRET_KEY=os.getenv("SECRET_KEY"),
         CORS_ALWAYS_SEND=True,
         CORS_ORIGINS="*",
-        WEBIRCPASS="contraseña",
+        WEBIRCPASS=os.getenv("WEBIRC_PASSWORD"),
         UPLOAD_FOLDER=os.path.join(app.instance_path, "uploads"),
-        MAX_CONTENT_LENGTH=3 * 1000 * 1000,
+        MAX_CONTENT_LENGTH=int(os.getenv("MAX_CONTENT_LENGTH") or 3000000),
     )
 
     if test_config is None:
