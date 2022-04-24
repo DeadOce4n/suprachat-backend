@@ -39,6 +39,7 @@ def get_all_users():
                 "password_from": user["password_from"] or None,
                 "country": user["country"] or None,
                 "about": user["about"] or None,
+                "picture": user["picture"] or None,
             }
         )
     return jsonify(user_list)
@@ -57,6 +58,7 @@ def get_user(nick):
         "password_from": user["password_from"] or None,
         "country": user["country"] or None,
         "about": user["about"] or None,
+        "picture": user["picture"] or None,
     }
 
 
@@ -115,6 +117,7 @@ def signup(args):
             "active": True,
             "country": None,
             "about": None,
+            "picture": None,
         }
     )
 
@@ -194,6 +197,7 @@ def login():
                     "verified": user["verified"],
                     "country": user["country"] or None,
                     "about": user["about"] or None,
+                    "picture": user["picture"] or None,
                 },
                 "exp": dt.datetime.utcnow() + dt.timedelta(minutes=30),
             },
