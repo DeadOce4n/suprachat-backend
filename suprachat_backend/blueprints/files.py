@@ -31,7 +31,7 @@ def upload(current_user):
             ({"success": False, "message": "File not present in request."}, 400)
         )
     if file and allowed_filename(file.filename):
-        filename = f"{uuid4().hex}.{file.filename.split('.')[1]}"
+        filename = f"{uuid4().hex}.{file.filename.split('.')[-1]}"
         file.save(os.path.join(current_app.config["UPLOAD_FOLDER"], filename))
         user = mongo.db.users.update_one(
             {"nick": current_user["nick"]}, {"$set": {"picture": filename}}
