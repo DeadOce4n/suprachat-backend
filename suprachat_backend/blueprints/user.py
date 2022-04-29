@@ -36,10 +36,10 @@ def get_all_users():
                 "nick": user["nick"],
                 "email": user["email"],
                 "registered_date": user["registered_date"],
-                "password_from": user["password_from"] or None,
-                "country": user["country"] or None,
-                "about": user["about"] or None,
-                "picture": user["picture"] or None,
+                "password_from": user.get("password_from", None),
+                "country": user.get("country", None),
+                "about": user.get("about", None),
+                "picture": user.get("picture", None),
             }
         )
     return jsonify(user_list)
@@ -54,11 +54,11 @@ def get_user(nick):
         "_id": str(user["_id"]),
         "nick": user["nick"],
         "email": user["email"],
-        "registered_date": user["registered_date"],
-        "password_from": user["password_from"] or None,
-        "country": user["country"] or None,
-        "about": user["about"] or None,
-        "picture": user["picture"] or None,
+        "registered_date": user.get("registered_date", None),
+        "password_from": user.get("password_from", None),
+        "country": user.get("country", None),
+        "about": user.get("about", None),
+        "picture": user.get("picture", None),
     }
 
 
@@ -193,11 +193,11 @@ def login():
                     "_id": str(user["_id"]),
                     "nick": user["nick"],
                     "email": user["email"],
-                    "registered_date": user["registered_date"] or None,
-                    "verified": user["verified"],
-                    "country": user["country"] or None,
-                    "about": user["about"] or None,
-                    "picture": user["picture"] or None,
+                    "registered_date": user.get("registered_date", None),
+                    "verified": user.get("verified", None),
+                    "country": user.get("country", None),
+                    "about": user.get("about", None),
+                    "picture": user.get("picture", None),
                 },
                 "exp": dt.datetime.utcnow() + dt.timedelta(minutes=30),
             },
