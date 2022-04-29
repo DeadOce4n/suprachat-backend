@@ -1,8 +1,8 @@
 from functools import wraps
 
-import jwt
 from bson.objectid import ObjectId
 from flask import current_app, request
+import jwt
 from jwt.exceptions import InvalidTokenError
 
 from suprachat_backend.db import mongo

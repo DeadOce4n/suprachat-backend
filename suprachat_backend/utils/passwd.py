@@ -1,6 +1,6 @@
-import subprocess
-import json
 import base64
+import json
+import subprocess
 
 
 def check_password_hash(password_hash: str, password: str) -> bool:

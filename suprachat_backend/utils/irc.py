@@ -1,4 +1,6 @@
-import irctokens, socket
+import socket
+
+import irctokens
 
 
 REGISTER_ERRORS = (

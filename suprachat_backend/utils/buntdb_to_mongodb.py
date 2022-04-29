@@ -1,8 +1,9 @@
-import click
-import json
-import sys
 from datetime import datetime
+import json
 from json.decoder import JSONDecodeError
+import sys
+
+import click
 from flask import current_app
 from flask.cli import with_appcontext
 from pymongo import MongoClient
