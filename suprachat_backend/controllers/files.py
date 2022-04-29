@@ -8,9 +8,9 @@ from suprachat_backend.utils.files import allowed_filename
 
 
 def download(name):
-    if name == "null":
-        return send_from_directory(current_app.config["UPLOAD_FOLDER"], "default.png")
-    return send_from_directory(current_app.config["UPLOAD_FOLDER"], name)
+    return send_from_directory(
+        current_app.config["UPLOAD_FOLDER"], name if name != "null" else "default.png"
+    )
 
 
 def upload(current_user, request):
