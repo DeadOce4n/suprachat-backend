@@ -150,6 +150,8 @@ def verify(request):
 
 def login(request):
     auth = request.authorization
+    current_app.logger.info(auth)
+    remember_me = json.loads(request.data).get("rememberMe", False)
 
     if not auth or not auth.username or not auth.password:
         return make_response(({"error": "Hacen falta parámetros."}, 401))
@@ -177,6 +179,7 @@ def login(request):
                 {"nick": auth.username},
                 {"$set": {"password": new_passwd_hash, "password_from": "supra"}},
             )
+        exp = {"days": 30} if remember_me else {"minutes": 30}
         token = jwt.encode(
             {
                 "user": {
@@ -189,11 +192,11 @@ def login(request):
                     "about": user.get("about", None),
                     "picture": user.get("picture", None),
                 },
-                "exp": dt.datetime.utcnow() + dt.timedelta(minutes=30),
+                "exp": dt.datetime.utcnow() + dt.timedelta(**exp),
             },
             current_app.config["SECRET_KEY"],
         )
-        current_app.logger.info(f"Usuario {user['nick']} inicia sesión")
+        current_app.logger.info(f"Usuario {user['nick']} inicia sesión | Sesión extendida: {remember_me}")
         return {"token": token}
     else:
         current_app.logger.info(f"Inicio de sesión fallido por {user['nick']}")

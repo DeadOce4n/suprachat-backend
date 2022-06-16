@@ -37,7 +37,7 @@ def verify_user():
     return verify(request)
 
 
-@bp.get("/api/v1/users/login")
+@bp.post("/api/v1/users/login")
 def login_user():
     return login(request)
 
