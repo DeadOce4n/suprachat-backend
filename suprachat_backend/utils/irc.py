@@ -55,7 +55,6 @@ class IRCClient:
 
     def __send(self, line):
         """Sends a tokenized command to the IRCd"""
-        print(f"> {line.format()}")
         self.e.push(line)
         while self.e.pending():
             self.e.pop(self.s.send(self.e.pending()))
@@ -159,13 +158,11 @@ class IRCClient:
                 return {"success": False, "message": "Disconnected from IRC server."}
 
             for line in lines:
-                print(f"< {line.format()}")
                 if line.command == "VERIFY" and "SUCCESS" in line.params:
                     self.__send(irctokens.build("QUIT"))
                     self.s.close()
                     return {"success": True, "message": "Verification successful."}
                 elif line.command == "FAIL":
-                    print(line.params)
                     self.__send(irctokens.build("QUIT"))
                     self.s.close()
                     return {
