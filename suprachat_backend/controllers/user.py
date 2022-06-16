@@ -193,8 +193,10 @@ def login(request):
             },
             current_app.config["SECRET_KEY"],
         )
+        current_app.logger.info(f"Usuario {user['nick']} inicia sesión")
         return {"token": token}
     else:
+        current_app.logger.info(f"Inicio de sesión fallido por {user['nick']}")
         return make_response(({"error": "Contraseña incorrecta"}, 401))
 
 
