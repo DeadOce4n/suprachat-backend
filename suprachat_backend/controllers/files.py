@@ -8,9 +8,9 @@ from suprachat_backend.utils.files import allowed_filename
 
 
 def download(name):
-    return send_from_directory(
-        current_app.config["UPLOAD_FOLDER"], name if name != "null" else "default.png"
-    )
+    file = name if name != "null" else "default.png"
+    current_app.logger.info(f"Descargando archivo: {file}")
+    return send_from_directory(current_app.config["UPLOAD_FOLDER"], file)
 
 
 def upload(current_user, request):
@@ -29,4 +29,5 @@ def upload(current_user, request):
         mongo.db.users.update_one(
             {"nick": current_user["nick"]}, {"$set": {"picture": filename}}
         )
+        current_app.logger.info(f"Se guardó la imagen {file.filename} como {filename}")
         return make_response(({"message": "Upload successful.", "path": filename}, 200))

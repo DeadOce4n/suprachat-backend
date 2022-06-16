@@ -61,10 +61,12 @@ def create(args, request):
     # anything else
     existing_user = mongo.db.users.find_one({"$or": [{"nick": nick}, {"email": email}]})
     if existing_user:
+        current_app.logger.info(f"Ya existe un usuario con ese nick o correo: {nick}, {email}")
         return make_response(({"error": "Nick o correo ya se encuentra en uso."}, 409))
 
     # Check if nick contains forbidden characters:  ,*?.!@:<>'\";#~&@%+-
     if not validate_string(nick):
+        current_app.logger.info("Contraseña contiene caracteres prohibidos")
         return make_response(
             (
                 {
@@ -84,9 +86,11 @@ def create(args, request):
     if client.connect():
         ircd_register_response = client.register(nick, email, password)
     else:
+        current_app.logger.info("Error al conectarse al servidor IRC")
         return make_response(({"error": "Error de conexión al servidor IRC."}))
 
     if not ircd_register_response["success"]:
+        current_app.logger.info(f"Falló el registro: {ircd_register_response['message']}")
         return make_response(({"error": ircd_register_response["message"]}, 422))
 
     # If registration succeeeds, insert the newly created user into the database
@@ -112,7 +116,7 @@ def create(args, request):
         "registered_date": registered_date,
         "verified": verified,
     }
-
+    current_app.logger.info("Usuario registrado exitosamente!")
     return make_response((response, 200))
 
 
@@ -131,13 +135,16 @@ def verify(request):
     if client.connect():
         ircd_verify_response = client.verify(nick, code)
     else:
+        current_app.logger.info("Error al conectarse al servidor IRC")
         return make_response(({"error": "Error de conexión al servidor IRC."}, 500))
 
     if not ircd_verify_response["success"]:
+        current_app.logger.info("Error al verificar el registro")
         return make_response(({"error": ircd_verify_response["message"]}, 400))
 
     mongo.db.users.update_one({"nick": nick}, {"$set": {"verified": True}})
 
+    current_app.logger.info("Verificación exitosa!")
     return make_response(({"verified": True}, 200))
 
 
@@ -158,6 +165,7 @@ def login(request):
     new_passwd_hash = None
 
     if user["password_from"] == "ergo":
+        current_app.logger.info("Cuenta creada directamente en el IRCd, se migrará contraseña")
         check_passwd_function = check_password_hash_ergo
         new_passwd_hash = generate_password_hash(auth.password)
     else:
