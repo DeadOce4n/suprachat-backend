@@ -1,9 +1,13 @@
 import datetime as dt
 import json
+import re
 
-from flask import current_app, jsonify, make_response
 import jwt
+from bson import ObjectId
+from flask import current_app, jsonify, make_response
 from werkzeug.security import check_password_hash, generate_password_hash
+from pymongo import ASCENDING
+from pymongo.collation import Collation
 
 from suprachat_backend.db import mongo
 from suprachat_backend.utils.irc import IRCClient
@@ -13,42 +17,51 @@ from suprachat_backend.utils.passwd import (
 from suprachat_backend.utils.validate_string import validate_string
 
 
-def get_all():
-    users = mongo.db.users.find({})
-    user_list = []
-    for user in users:
-        user_list.append(
-            {
-                "_id": str(user["_id"]),
-                "nick": user["nick"],
-                "email": user["email"],
-                "registered_date": user["registered_date"],
-                "password_from": user.get("password_from", None),
-                "country": user.get("country", None),
-                "about": user.get("about", None),
-                "picture": user.get("picture", None),
-            }
-        )
-    return jsonify(user_list)
+def find(args):
+    page = args.get("page")
+    flt = args.get("filter")
+    limit = args.get("limit")
+
+    regex = re.compile(flt, re.IGNORECASE)
+    skip = (page - 1) * limit
+
+    users = map(
+        lambda user: {**user, "_id": str(user["_id"])},
+        mongo.db.users.find(
+            {"nick": regex},
+            projection={"password": False},
+            skip=skip,
+            limit=limit,
+            sort=[("nick", ASCENDING)],
+            collation=Collation("es"),
+        ),
+    )
+
+    total_users = mongo.db.users.count_documents({})
+    total_filtered = (
+        total_users if flt == "" else mongo.db.users.count_documents({"nick": regex})
+    )
+
+    return jsonify(
+        {
+            "users": list(users),
+            "count": {
+                "actual": len(list(users)),
+                "total": total_users,
+                "filtered": total_filtered,
+            },
+        }
+    )
 
 
-def get_one(nick):
-    user = mongo.db.users.find_one({"nick": nick})
+def get(nick):
+    user = mongo.db.users.find_one({"nick": nick}, projection={"password": False})
     if not user:
         return make_response(({"error": "Usuario no encontrado."}, 404))
-    return {
-        "_id": str(user["_id"]),
-        "nick": user["nick"],
-        "email": user["email"],
-        "registered_date": user.get("registered_date", None),
-        "password_from": user.get("password_from", None),
-        "country": user.get("country", None),
-        "about": user.get("about", None),
-        "picture": user.get("picture", None),
-    }
+    return {**user, "_id": str(user["_id"])}
 
 
-def create(args, request):
+def register(args, request):
     nick = args.get("nick")
     email = args.get("email")
     password = args.get("password")
@@ -61,7 +74,9 @@ def create(args, request):
     # anything else
     existing_user = mongo.db.users.find_one({"$or": [{"nick": nick}, {"email": email}]})
     if existing_user:
-        current_app.logger.info(f"Ya existe un usuario con ese nick o correo: {nick}, {email}")
+        current_app.logger.info(
+            f"Ya existe un usuario con ese nick o correo: {nick}, {email}"
+        )
         return make_response(({"error": "Nick o correo ya se encuentra en uso."}, 409))
 
     # Check if nick contains forbidden characters:  ,*?.!@:<>'\";#~&@%+-
@@ -90,7 +105,9 @@ def create(args, request):
         return make_response(({"error": "Error de conexión al servidor IRC."}))
 
     if not ircd_register_response["success"]:
-        current_app.logger.info(f"Falló el registro: {ircd_register_response['message']}")
+        current_app.logger.info(
+            f"Falló el registro: {ircd_register_response['message']}"
+        )
         return make_response(({"error": ircd_register_response["message"]}, 422))
 
     # If registration succeeeds, insert the newly created user into the database
@@ -150,7 +167,6 @@ def verify(request):
 
 def login(request):
     auth = request.authorization
-    current_app.logger.info(auth)
     remember_me = json.loads(request.data).get("rememberMe", False)
 
     if not auth or not auth.username or not auth.password:
@@ -167,7 +183,9 @@ def login(request):
     new_passwd_hash = None
 
     if user["password_from"] == "ergo":
-        current_app.logger.info("Cuenta creada directamente en el IRCd, se migrará contraseña")
+        current_app.logger.info(
+            "Cuenta creada directamente en el IRCd, se migrará contraseña"
+        )
         check_passwd_function = check_password_hash_ergo
         new_passwd_hash = generate_password_hash(auth.password)
     else:
@@ -180,30 +198,24 @@ def login(request):
                 {"$set": {"password": new_passwd_hash, "password_from": "supra"}},
             )
         exp = {"days": 30} if remember_me else {"minutes": 30}
+        user.pop("password")
         token = jwt.encode(
             {
-                "user": {
-                    "_id": str(user["_id"]),
-                    "nick": user["nick"],
-                    "email": user["email"],
-                    "registered_date": user.get("registered_date", None),
-                    "verified": user.get("verified", None),
-                    "country": user.get("country", None),
-                    "about": user.get("about", None),
-                    "picture": user.get("picture", None),
-                },
+                "user": {**user, "_id": str(user["_id"])},
                 "exp": dt.datetime.utcnow() + dt.timedelta(**exp),
             },
             current_app.config["SECRET_KEY"],
         )
-        current_app.logger.info(f"Usuario {user['nick']} inicia sesión | Sesión extendida: {remember_me}")
+        current_app.logger.info(
+            f"Usuario {user['nick']} inicia sesión | Sesión extendida: {remember_me}"
+        )
         return {"token": token}
     else:
         current_app.logger.info(f"Inicio de sesión fallido por {user['nick']}")
         return make_response(({"error": "Contraseña incorrecta"}, 401))
 
 
-def update(current_user, args):
+def update_self(current_user, args):
     country = args.get("country")
     about = args.get("about")
     password = args.get("password")
@@ -234,9 +246,39 @@ def update(current_user, args):
         return make_response(({"error": "Nada para modificar."}, 409))
 
     mongo.db.users.update_one(
-        {"nick": current_user["nick"]}, {"$set": {**fields_to_update}}
+        {"nick": current_user["nick"]},
+        {"$set": {**fields_to_update}},
     )
 
-    response = {"nick": current_user["nick"], **fields_to_update}
+    updated_user = mongo.db.users.find_one(
+        {"nick": current_user["nick"]},
+        projection={"password": False},
+    )
 
-    return make_response((response, 200))
+    return make_response(({**updated_user, "_id": str(updated_user["_id"])}, 200))
+
+
+def update(current_user, args, _id):
+    if not current_user["admin"]:
+        return make_response(({"error": "User is not an admin!"}, 401))
+
+    data = {
+        "password": args.get("password"),
+        "verified": args.get("verified"),
+        "country": args.get("country"),
+        "about": args.get("about"),
+    }
+
+    if data["password"] is not None:
+        data["password"] = generate_password_hash(data["password"])
+
+    mongo.db.users.update_one(
+        {"_id": ObjectId(_id)},
+        {"$set": {k: v for k, v in data.items() if v is not None}},
+    )
+
+    user = mongo.db.users.find_one(
+        {"_id": ObjectId(_id)}, projection={"password": False}
+    )
+
+    return {**user, "_id": str(user["_id"])}

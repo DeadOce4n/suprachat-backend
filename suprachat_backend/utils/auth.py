@@ -1,7 +1,7 @@
 from functools import wraps
 
 from bson.objectid import ObjectId
-from flask import current_app, request
+from flask import current_app, request, make_response
 import jwt
 from jwt.exceptions import InvalidTokenError
 
@@ -30,7 +30,7 @@ def token_required(f):
                 raise InvalidTokenError("Token is invalid, user does not exist.")
         except InvalidTokenError as e:
             print(e)
-            return {"success": False, "error": "Invalid token"}
+            return make_response(({"success": False, "error": "Invalid token"}, 401))
 
         return f(current_user, *args, **kwargs)
 

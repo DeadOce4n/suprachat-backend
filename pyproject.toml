@@ -22,6 +22,7 @@ irctokens = "^2.0.1"
 isort = "^5.10.1"
 pytest = "^7.0.0"
 pytest-mock = "^3.7.0"
+black = "^22.6.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
