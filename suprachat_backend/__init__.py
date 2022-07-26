@@ -1,4 +1,5 @@
 import os
+import logging
 
 from dotenv import load_dotenv
 from flask import Flask
@@ -16,6 +17,11 @@ load_dotenv()
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
+    if __name__ != "__main__":
+        gunicorn_logger = logging.getLogger('gunicorn.error')
+        app.logger.handlers = gunicorn_logger.handlers
+        app.logger.setLevel(gunicorn_logger.level)
+
     app.config.from_mapping(
         MONGO_URI=os.getenv("MONGO_URI"),
         SECRET_KEY=os.getenv("SECRET_KEY"),

@@ -1,5 +1,5 @@
 import socket
-
+from flask import current_app
 import irctokens
 
 
@@ -55,6 +55,7 @@ class IRCClient:
 
     def __send(self, line):
         """Sends a tokenized command to the IRCd"""
+        current_app.logger.info(f"> {line.format()}")
         self.e.push(line)
         while self.e.pending():
             self.e.pop(self.s.send(self.e.pending()))
@@ -95,6 +96,7 @@ class IRCClient:
                 return {"success": False, "message": "Disconnected from IRC server."}
 
             for line in lines:
+                current_app.logger.info(f"< {line.format()}")
                 if line.command == "PING":
                     to_send = irctokens.build("PONG", [line.params[0]])
                     self.__send(to_send)
