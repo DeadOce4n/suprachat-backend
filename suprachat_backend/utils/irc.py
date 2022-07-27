@@ -31,7 +31,7 @@ class IRCClient:
         self.e = irctokens.StatefulEncoder()
         self.s = socket.socket()
 
-    def connect(self, server: str = None, port: int = None) -> bool:
+    def connect(self, server: str | None = None, port: int | None = None) -> bool:
         """
         Connects to the IRC server, hopefully located on the same machine.
 
