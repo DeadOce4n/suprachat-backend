@@ -7,3 +7,4 @@ instance/
 ircd.db
 ergo/
 *.log
+.python-version
