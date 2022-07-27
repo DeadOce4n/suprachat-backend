@@ -54,7 +54,7 @@ def find(args):
     )
 
 
-def get(nick):
+def find_one(nick):
     user = mongo.db.users.find_one({"nick": nick}, projection={"password": False})
     if not user:
         return make_response(({"error": "Usuario no encontrado."}, 404))
@@ -215,7 +215,7 @@ def login(request):
         return make_response(({"error": "Contraseña incorrecta"}, 401))
 
 
-def update_self(current_user, args):
+def update_me(current_user, args):
     country = args.get("country")
     about = args.get("about")
     password = args.get("password")
@@ -241,6 +241,8 @@ def update_self(current_user, args):
         stored_pw_hash = existing_user["password"]
         if not check_password_hash(stored_pw_hash, password):
             fields_to_update["password"] = generate_password_hash(password)
+            if existing_user["password_from"] == "ergo":
+                fields_to_update["password_from"] = "supra"
 
     if len(fields_to_update.items()) == 0:
         return make_response(({"error": "Nada para modificar."}, 409))
@@ -269,16 +271,26 @@ def update(current_user, args, _id):
         "about": args.get("about"),
     }
 
+    user = mongo.db.users.find_one({"_id": ObjectId(_id)})
+
+    if user is None:
+        return make_response(({"error": "User not found"}, 404))
+
     if data["password"] is not None:
         data["password"] = generate_password_hash(data["password"])
+        if user["password_from"] == "ergo":
+            data["password_from"] = "supra"
 
     mongo.db.users.update_one(
         {"_id": ObjectId(_id)},
         {"$set": {k: v for k, v in data.items() if v is not None}},
     )
 
-    user = mongo.db.users.find_one(
+    updated_user = mongo.db.users.find_one(
         {"_id": ObjectId(_id)}, projection={"password": False}
     )
 
-    return {**user, "_id": str(user["_id"])}
+    if updated_user is None:
+        return make_response(({"error": "User not found"}, 404))
+
+    return {**updated_user, "_id": str(user["_id"])}
